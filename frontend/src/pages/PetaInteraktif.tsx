@@ -1,0 +1,496 @@
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { MapContainer, TileLayer, GeoJSON, ZoomControl, LayersControl, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { ChevronDown, Navigation, MapPin, X, AlertTriangle } from 'lucide-react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { divIcon } from 'leaflet';
+import { layerAPI } from '../services/api';
+import { getRisikoFillColor, getJalurColor, KECAMATAN_OPTIONS } from '../utils/helpers';
+
+const { BaseLayer, Overlay } = LayersControl;
+const CENTER: [number, number] = [-5.3971, 105.2668];
+
+const risikoStyle = (risiko: string) => ({
+  fillColor: getRisikoFillColor(risiko),
+  weight: 1.5, opacity: 0.9, color: 'white', fillOpacity: 0.65,
+});
+
+const jalurStyle = (jenis: string) => ({
+  color: getJalurColor(jenis), weight: 4, opacity: 0.9,
+});
+
+function createIcon(color: string, emoji: string) {
+  const html = renderToStaticMarkup(
+    <div style={{ background: color, width: 32, height: 32, borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ transform: 'rotate(45deg)', fontSize: 14 }}>{emoji}</span>
+    </div>
+  );
+  return divIcon({ html, className: '', iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -36] });
+}
+
+// Komponen penangkap klik peta
+function MapClickHandler({ routingMode, routeStart, routeEnd, setRouteStart, setRouteEnd }: any) {
+  useMapEvents({
+    click(e) {
+      if (!routingMode) return;
+      if (!routeStart) {
+        setRouteStart([e.latlng.lat, e.latlng.lng]);
+      } else if (!routeEnd) {
+        setRouteEnd([e.latlng.lat, e.latlng.lng]);
+      }
+    }
+  });
+  return null;
+}
+
+export default function PetaInteraktif() {
+  const [layers, setLayers] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  
+  // Floating Filters
+  const [filterWilayah, setFilterWilayah] = useState('Semua Wilayah');
+  const [filterBencana, setFilterBencana] = useState('Semua Bencana');
+  const [filterTahun, setFilterTahun] = useState('2025');
+
+  const TAHUN_OPTIONS = ['2025', '2024', '2023', '2022', '2021'];
+
+  // Routing State
+  const [routingMode, setRoutingMode] = useState(false);
+  const [routeStart, setRouteStart] = useState<[number, number] | null>(null);
+  const [routeEnd, setRouteEnd] = useState<[number, number] | null>(null);
+  const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState('');
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      try {
+        const [banjir, longsor, evakuasi, pengungsian, alatBerat, jalan, jaringanJalan, wilayah, pemukiman, desa] = await Promise.allSettled([
+          layerAPI.getBanjir(), layerAPI.getLongsor(), layerAPI.getEvakuasi(),
+          layerAPI.getPengungsian(), layerAPI.getAlatBerat(), layerAPI.getKondisiJalan(), layerAPI.getJaringanJalan(), layerAPI.getWilayah(), layerAPI.getPemukiman(), layerAPI.getDesa()
+        ]);
+        setLayers({
+          banjir: banjir.status === 'fulfilled' ? banjir.value.data : null,
+          longsor: longsor.status === 'fulfilled' ? longsor.value.data : null,
+          evakuasi: evakuasi.status === 'fulfilled' ? evakuasi.value.data : null,
+          pengungsian: pengungsian.status === 'fulfilled' ? pengungsian.value.data : null,
+          alatBerat: alatBerat.status === 'fulfilled' ? alatBerat.value.data : null,
+          jalan: jalan.status === 'fulfilled' ? jalan.value.data : null,
+          jaringan_jalan: jaringanJalan.status === 'fulfilled' ? jaringanJalan.value.data : null,
+          wilayah: wilayah.status === 'fulfilled' ? wilayah.value.data : null,
+          pemukiman: pemukiman.status === 'fulfilled' ? pemukiman.value.data : null,
+          desa: desa.status === 'fulfilled' ? desa.value.data : null,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
+  }, []);
+
+  const filterFeatures = useCallback((geojson: any) => {
+    if (!geojson) return geojson;
+    return {
+      ...geojson,
+      features: geojson.features?.filter((f: any) => {
+        if (filterWilayah !== 'Semua Wilayah' && f.properties?.kecamatan !== filterWilayah) return false;
+        if (filterTahun && f.properties?.tahun) {
+          if (f.properties.tahun.toString() !== filterTahun) return false;
+        }
+        return true;
+      }) || []
+    };
+  }, [filterWilayah, filterTahun]);
+
+  // Ranking Calculation
+  const ranking = useMemo(() => {
+    let all: any[] = [];
+    if (filterBencana === 'Semua Bencana' || filterBencana === 'Banjir') {
+      if (layers.banjir?.features) all = [...all, ...layers.banjir.features];
+    }
+    if (filterBencana === 'Semua Bencana' || filterBencana === 'Longsor') {
+      if (layers.longsor?.features) all = [...all, ...layers.longsor.features];
+    }
+
+    if (filterWilayah !== 'Semua Wilayah') {
+      all = all.filter(f => f.properties?.kecamatan === filterWilayah);
+    }
+
+    all.sort((a, b) => {
+      const risk: Record<string, number> = { TINGGI: 3, SEDANG: 2, RENDAH: 1 };
+      const valA = risk[a.properties?.tingkat_risiko || 'RENDAH'] || 0;
+      const valB = risk[b.properties?.tingkat_risiko || 'RENDAH'] || 0;
+      if (valB !== valA) return valB - valA;
+      return (Number(b.properties?.luas_area) || 0) - (Number(a.properties?.luas_area) || 0);
+    });
+
+    return all.slice(0, 20);
+  }, [layers, filterWilayah, filterBencana]);
+
+  // Handle Route Fetching
+  useEffect(() => {
+    if (routeStart && routeEnd) {
+      const fetchRoute = async () => {
+        setRouteLoading(true);
+        setRouteError('');
+        try {
+          const res = await fetch(`http://localhost:5000/api/route?startLat=${routeStart[0]}&startLng=${routeStart[1]}&endLat=${routeEnd[0]}&endLng=${routeEnd[1]}`);
+          const data = await res.json();
+          if (res.ok) {
+            setRouteGeoJSON(data);
+          } else {
+            setRouteError(data.error || 'Gagal mencari rute');
+          }
+        } catch (err: any) {
+          setRouteError(err.message);
+        } finally {
+          setRouteLoading(false);
+        }
+      };
+      fetchRoute();
+    }
+  }, [routeStart, routeEnd]);
+
+  const resetRouting = () => {
+    setRouteStart(null);
+    setRouteEnd(null);
+    setRouteGeoJSON(null);
+    setRouteError('');
+  };
+
+  return (
+    <div className="relative h-[calc(100vh-64px)] w-full overflow-hidden bg-slate-100">
+      
+      {/* FLOATING TOP CONTROLS */}
+      <div className="absolute top-4 left-4 z-[400] flex flex-wrap gap-3 max-w-[60%]">
+        <div className="relative bg-white rounded shadow-md border border-slate-200 w-48 shrink-0">
+          <select 
+            value={filterWilayah} 
+            onChange={e => setFilterWilayah(e.target.value)}
+            className="w-full appearance-none px-4 py-2.5 text-sm font-medium text-slate-700 bg-transparent outline-none cursor-pointer"
+          >
+            <option value="Semua Wilayah">Semua Wilayah</option>
+            {KECAMATAN_OPTIONS.map(k => <option key={k} value={k}>{k}</option>)}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
+
+        <div className="relative bg-white rounded shadow-md border border-slate-200 w-48 shrink-0">
+          <select 
+            value={filterBencana} 
+            onChange={e => setFilterBencana(e.target.value)}
+            className="w-full appearance-none px-4 py-2.5 text-sm font-medium text-slate-700 bg-transparent outline-none cursor-pointer"
+          >
+            <option value="Semua Bencana">Semua Bencana</option>
+            <option value="Banjir">Banjir</option>
+            <option value="Longsor">Longsor</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
+
+        <div className="relative bg-white rounded shadow-md border border-slate-200 w-36 shrink-0">
+          <select 
+            value={filterTahun} 
+            onChange={e => setFilterTahun(e.target.value)}
+            className="w-full appearance-none px-4 py-2.5 text-sm font-medium text-slate-700 bg-transparent outline-none cursor-pointer"
+          >
+            {TAHUN_OPTIONS.map(t => <option key={t} value={t}>Tahun {t}</option>)}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
+
+        <button 
+          onClick={() => {
+            setRoutingMode(!routingMode);
+            if (routingMode) resetRouting();
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded shadow-md font-bold transition-all ${routingMode ? 'bg-red-500 text-white' : 'bg-primary-600 text-white hover:bg-primary-700'}`}
+        >
+          <Navigation className="w-4 h-4" />
+          {routingMode ? 'Tutup Navigasi' : 'Cari Rute Evakuasi'}
+        </button>
+      </div>
+
+      {/* ROUTING UI PANEL */}
+      {routingMode && (
+        <div className="absolute top-20 left-4 z-[400] w-80 bg-white shadow-2xl rounded-lg overflow-hidden border border-slate-200 animate-slide-up">
+          <div className="p-4 bg-primary-600 text-white flex justify-between items-center">
+            <h3 className="font-bold flex items-center gap-2"><Navigation className="w-4 h-4"/> Rute Cerdas Evakuasi</h3>
+            <button onClick={() => { setRoutingMode(false); resetRouting(); }}><X className="w-5 h-5 opacity-70 hover:opacity-100" /></button>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="text-xs text-slate-500 bg-blue-50 p-2 rounded border border-blue-100 mb-2">
+              💡 <b>Tips:</b> Klik pada peta untuk memilih titik awal dan tujuan. Sistem akan otomatis menghindari area yang sedang banjir.
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-xs">A</div>
+              <div className="flex-1">
+                <p className="text-xs text-slate-400 font-medium">Titik Awal</p>
+                <p className="text-sm font-semibold text-slate-700">{routeStart ? `${routeStart[0].toFixed(4)}, ${routeStart[1].toFixed(4)}` : 'Klik di peta...'}</p>
+              </div>
+              {routeStart && !routeEnd && <button onClick={() => setRouteStart(null)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4"/></button>}
+            </div>
+
+            <div className="w-0.5 h-6 bg-slate-200 ml-3"></div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">B</div>
+              <div className="flex-1">
+                <p className="text-xs text-slate-400 font-medium">Tujuan Evakuasi</p>
+                <p className="text-sm font-semibold text-slate-700">{routeEnd ? `${routeEnd[0].toFixed(4)}, ${routeEnd[1].toFixed(4)}` : 'Klik di peta...'}</p>
+              </div>
+              {routeEnd && <button onClick={() => setRouteEnd(null)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4"/></button>}
+            </div>
+
+            {routeLoading && (
+              <div className="mt-4 p-2 bg-slate-50 text-center text-sm font-medium text-slate-500 rounded animate-pulse">
+                Sedang mengkalkulasi rute teraman...
+              </div>
+            )}
+
+            {routeError && (
+              <div className="mt-4 p-3 bg-red-50 text-red-600 text-xs rounded border border-red-200 flex gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{routeError}</span>
+              </div>
+            )}
+
+            {routeGeoJSON && (
+              <button onClick={resetRouting} className="w-full mt-2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold rounded transition">
+                Reset Rute
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING RANKING PANEL (RIGHT) */}
+      <div className="absolute top-4 right-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-100px)] animate-slide-up hidden md:flex">
+        <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <span className="text-sm font-bold text-slate-700 tracking-wider">
+            RANKING {filterBencana !== 'Semua Bencana' ? filterBencana.toUpperCase() : 'BENCANA'}
+          </span>
+          <ChevronDown className="w-4 h-4 text-slate-400" />
+        </div>
+        <div className="flex-1 overflow-y-auto p-0">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 z-10">
+              <tr>
+                <th className="px-3 py-2 text-slate-500 font-semibold w-8">NO</th>
+                <th className="px-3 py-2 text-slate-500 font-semibold">WILAYAH</th>
+                <th className="px-3 py-2 text-slate-500 font-semibold text-center">{filterTahun}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranking.length > 0 ? (
+                ranking.map((row, i) => (
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="px-3 py-2.5 text-slate-400">{i + 1}.</td>
+                    <td className="px-3 py-2.5">
+                      <div className="font-medium text-slate-700">{row.properties?.nama_wilayah || 'Unknown'}</div>
+                      <div className="text-[10px] text-slate-400">{row.properties?.kecamatan || '-'}</div>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        row.properties?.tingkat_risiko === 'TINGGI' ? 'bg-red-100 text-red-600' : 
+                        row.properties?.tingkat_risiko === 'SEDANG' ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+                      }`}>
+                        {row.properties?.tingkat_risiko || 'RENDAH'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
+                    Tidak ada data ditemukan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MAP */}
+      <MapContainer center={CENTER} zoom={12} zoomControl={false} className="w-full h-full z-10 cursor-crosshair">
+        <MapClickHandler 
+          routingMode={routingMode} 
+          routeStart={routeStart} 
+          routeEnd={routeEnd} 
+          setRouteStart={setRouteStart} 
+          setRouteEnd={setRouteEnd} 
+        />
+
+        <LayersControl position="bottomleft">
+          <BaseLayer checked name="Peta Minimalis (Terang)">
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
+          </BaseLayer>
+          <BaseLayer name="OpenStreetMap">
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+          </BaseLayer>
+
+          {layers.jaringan_jalan && (
+            <Overlay name="🕸️ Jaringan Jalan (Routing)">
+              <GeoJSON 
+                data={layers.jaringan_jalan} 
+                style={{ color: '#94a3b8', weight: 1.5, opacity: 0.6 }}
+                onEachFeature={(feature, layer) => {
+                  layer.bindPopup(`<b>🛣️ ${feature.properties.nama || 'Jalan'}</b><br/>Tipe: ${feature.properties.tipe}<br/>ID: ${feature.properties.id}`);
+                }}
+              />
+            </Overlay>
+          )}
+
+          {layers.wilayah && (
+            <Overlay checked name="🗺️ Batas Wilayah Kecamatan">
+              <GeoJSON 
+                data={layers.wilayah} 
+                style={{ color: '#64748b', weight: 2, opacity: 0.8, fillOpacity: 0.05, dashArray: '5, 5' }}
+                onEachFeature={(feature, layer) => {
+                  layer.bindTooltip(`<b>${feature.properties.kecamatan}</b>`, { sticky: true, className: 'bg-white/90 text-slate-700 font-bold border-0 shadow-sm px-2 py-1' });
+                }}
+              />
+            </Overlay>
+          )}
+
+          {layers.desa && (
+            <Overlay checked name="📍 Batas Desa/Kelurahan">
+              <GeoJSON 
+                data={layers.desa} 
+                style={{ color: '#10b981', weight: 1.5, opacity: 0.6, fillOpacity: 0.0, dashArray: '3, 4' }}
+                onEachFeature={(feature, layer) => {
+                  layer.bindTooltip(`<span class="text-xs text-emerald-700 font-semibold">${feature.properties.desa}</span>`, { sticky: true, className: 'bg-white/70 border-0 shadow-none px-1 py-0.5' });
+                }}
+              />
+            </Overlay>
+          )}
+
+          {layers.pemukiman && (
+            <Overlay checked name="🏘️ Pemukiman Warga">
+              <GeoJSON 
+                data={layers.pemukiman} 
+                style={{ color: '#f97316', weight: 1, opacity: 0.8, fillColor: '#fdba74', fillOpacity: 0.4 }}
+                onEachFeature={(feature, layer) => {
+                  const p = feature.properties;
+                  layer.bindPopup(`
+                    <div class="map-popup p-3 min-w-[200px]">
+                      <div class="font-bold text-slate-800 text-[15px] mb-2 border-b pb-2 border-slate-200 flex items-center gap-2">
+                        🏘️ ${p.nama}
+                      </div>
+                      <table class="w-full text-xs text-slate-600">
+                        <tr><td class="py-1 w-20 text-slate-400">Kecamatan</td><td class="py-1 font-medium">${p.kecamatan || '-'}</td></tr>
+                        ${p.deskripsi ? `<tr><td colspan="2" class="pt-2"><div class="bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100">"${p.deskripsi}"</div></td></tr>` : ''}
+                      </table>
+                    </div>
+                  `);
+                }}
+              />
+            </Overlay>
+          )}
+
+          {/* OVERLAYS */}
+          {layers.banjir && (
+            <Overlay checked={filterBencana === 'Semua Bencana' || filterBencana === 'Banjir'} name="🌊 Daerah Rawan Banjir">
+              <GeoJSON 
+                key={`banjir-${filterWilayah}`}
+                data={filterFeatures(layers.banjir)} 
+                style={(f: any) => risikoStyle(f.properties?.tingkat_risiko)}
+                onEachFeature={(feature, layer) => {
+                  const p = feature.properties;
+                  layer.bindPopup(`
+                    <div class="map-popup p-3 min-w-[200px]">
+                      <div class="font-bold text-slate-800 text-[15px] mb-2 border-b pb-2 border-slate-200 flex items-center gap-2">
+                        🌊 ${p.nama_wilayah}
+                      </div>
+                      <table class="w-full text-xs text-slate-600">
+                        <tr><td class="py-1 w-20 text-slate-400">Kecamatan</td><td class="py-1 font-medium">${p.kecamatan || '-'}</td></tr>
+                        <tr><td class="py-1 text-slate-400">Kelurahan</td><td class="py-1 font-medium">${p.kelurahan || '-'}</td></tr>
+                        <tr><td class="py-1 text-slate-400">Risiko</td><td class="py-1"><span class="px-1.5 py-0.5 rounded text-white font-bold" style="background:${getRisikoFillColor(p.tingkat_risiko)}">${p.tingkat_risiko || 'SEDANG'}</span></td></tr>
+                        ${p.luas_area ? `<tr><td class="py-1 text-slate-400">Luas Area</td><td class="py-1 font-medium">${p.luas_area} Ha</td></tr>` : ''}
+                        ${p.deskripsi ? `<tr><td colspan="2" class="pt-2"><div class="bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100">"${p.deskripsi}"</div></td></tr>` : ''}
+                      </table>
+                    </div>
+                  `);
+                }}
+              />
+            </Overlay>
+          )}
+
+          {layers.longsor && (
+            <Overlay checked={filterBencana === 'Semua Bencana' || filterBencana === 'Longsor'} name="⛰️ Daerah Rawan Longsor">
+              <GeoJSON 
+                key={`longsor-${filterWilayah}`}
+                data={filterFeatures(layers.longsor)} 
+                style={(f: any) => ({ ...risikoStyle(f.properties?.tingkat_risiko), fillColor: '#f59e0b' })}
+                onEachFeature={(feature, layer) => {
+                  const p = feature.properties;
+                  layer.bindPopup(`
+                    <div class="map-popup p-3 min-w-[200px]">
+                      <div class="font-bold text-slate-800 text-[15px] mb-2 border-b pb-2 border-slate-200 flex items-center gap-2">
+                        ⛰️ ${p.nama_wilayah}
+                      </div>
+                      <table class="w-full text-xs text-slate-600">
+                        <tr><td class="py-1 w-20 text-slate-400">Kecamatan</td><td class="py-1 font-medium">${p.kecamatan || '-'}</td></tr>
+                        <tr><td class="py-1 text-slate-400">Kelurahan</td><td class="py-1 font-medium">${p.kelurahan || '-'}</td></tr>
+                        <tr><td class="py-1 text-slate-400">Risiko</td><td class="py-1"><span class="px-1.5 py-0.5 rounded text-white font-bold" style="background:${getRisikoFillColor(p.tingkat_risiko)}">${p.tingkat_risiko || 'SEDANG'}</span></td></tr>
+                        ${p.luas_area ? `<tr><td class="py-1 text-slate-400">Luas Area</td><td class="py-1 font-medium">${p.luas_area} Ha</td></tr>` : ''}
+                        ${p.deskripsi ? `<tr><td colspan="2" class="pt-2"><div class="bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100">"${p.deskripsi}"</div></td></tr>` : ''}
+                      </table>
+                    </div>
+                  `);
+                }}
+              />
+            </Overlay>
+          )}
+          
+          {layers.evakuasi && (
+            <Overlay name="🚗 Jalur Evakuasi">
+              <GeoJSON 
+                data={filterFeatures(layers.evakuasi)} 
+                style={(f: any) => jalurStyle(f.properties?.jenis_jalur)}
+                onEachFeature={(feature, layer) => {
+                  layer.bindPopup(`<b>🚗 ${feature.properties.nama_jalur}</b><br/>Jenis: ${feature.properties.jenis_jalur}`);
+                }}
+              />
+            </Overlay>
+          )}
+
+          {layers.pengungsian && layers.pengungsian.features?.map((f: any) => {
+            if (filterWilayah !== 'Semua Wilayah' && f.properties.kecamatan !== filterWilayah) return null;
+            return (
+              <Overlay key={f.properties.id} name="🏠 Titik Pengungsian">
+                <Marker position={[f.geometry.coordinates[1], f.geometry.coordinates[0]]} icon={createIcon('#3b82f6', '🏠')}>
+                  <Popup><b>🏠 {f.properties.nama_lokasi}</b><br/>Kapasitas: {f.properties.kapasitas}</Popup>
+                </Marker>
+              </Overlay>
+            );
+          })}
+          
+        </LayersControl>
+
+        {/* ROUTING RENDER */}
+        {routeStart && (
+          <Marker position={routeStart} icon={createIcon('#22c55e', 'A')} zIndexOffset={1000}>
+            <Popup>Titik Awal</Popup>
+          </Marker>
+        )}
+        {routeEnd && (
+          <Marker position={routeEnd} icon={createIcon('#3b82f6', 'B')} zIndexOffset={1000}>
+            <Popup>Titik Tujuan Evakuasi</Popup>
+          </Marker>
+        )}
+        {routeGeoJSON && (
+          <GeoJSON 
+            key={JSON.stringify(routeGeoJSON)} 
+            data={routeGeoJSON} 
+            style={{ color: '#3b82f6', weight: 6, opacity: 0.8, dashArray: '10, 10' }} 
+          />
+        )}
+        
+        <ZoomControl position="bottomright" />
+      </MapContainer>
+    </div>
+  );
+}

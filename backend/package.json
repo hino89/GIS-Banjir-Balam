@@ -1,0 +1,33 @@
+{
+  "name": "sig-bencana-backend",
+  "version": "1.0.0",
+  "description": "SIG Mitigasi Bencana Bandar Lampung - Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "seed": "node src/db/seed.js",
+    "schema": "psql -U postgres -d sig_bandar_lampung -f src/db/schema.sql"
+  },
+  "keywords": [
+    "gis",
+    "bencana",
+    "bandar-lampung"
+  ],
+  "author": "BPBD Bandar Lampung",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-async-handler": "^1.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "pg": "^8.21.0",
+    "uuid": "^14.0.0"
+  }
+}

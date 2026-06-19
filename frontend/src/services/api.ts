@@ -125,7 +125,7 @@ export const usersAPI = {
 
 // ==================== LAYER ====================
 export const layerAPI = {
-  getBanjir: () => api.get('/layer/banjir'),
+  getCuacaAllKelurahan: () => api.get('/cuaca/all-kelurahan'),
   getLongsor: () => api.get('/layer/longsor'),
   getPengungsian: () => api.get('/layer/pengungsian'),
   getEvakuasi: () => api.get('/layer/evakuasi'),

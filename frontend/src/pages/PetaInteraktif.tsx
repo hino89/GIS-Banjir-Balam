@@ -64,12 +64,12 @@ export default function PetaInteraktif() {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        const [banjir, longsor, evakuasi, pengungsian, alatBerat, jalan, jaringanJalan, wilayah, pemukiman, desa] = await Promise.allSettled([
-          layerAPI.getBanjir(), layerAPI.getLongsor(), layerAPI.getEvakuasi(),
+        const [cuaca, longsor, evakuasi, pengungsian, alatBerat, jalan, jaringanJalan, wilayah, pemukiman, desa] = await Promise.allSettled([
+          layerAPI.getCuacaAllKelurahan(), layerAPI.getLongsor(), layerAPI.getEvakuasi(),
           layerAPI.getPengungsian(), layerAPI.getAlatBerat(), layerAPI.getKondisiJalan(), layerAPI.getJaringanJalan(), layerAPI.getWilayah(), layerAPI.getPemukiman(), layerAPI.getDesa()
         ]);
         setLayers({
-          banjir: banjir.status === 'fulfilled' ? banjir.value.data : null,
+          banjir: cuaca.status === 'fulfilled' ? cuaca.value.data : null, // we store cuaca in banjir for backward compatibility
           longsor: longsor.status === 'fulfilled' ? longsor.value.data : null,
           evakuasi: evakuasi.status === 'fulfilled' ? evakuasi.value.data : null,
           pengungsian: pengungsian.status === 'fulfilled' ? pengungsian.value.data : null,
@@ -115,29 +115,39 @@ export default function PetaInteraktif() {
     };
   }, [filterWilayah]);
 
-  // Combine Daerah Rawan Banjir data into Desa boundaries
+  // Combine Real-Time Weather into Desa boundaries
   const enrichedDesa = useMemo(() => {
     if (!layers.desa) return null;
-    const banjirMap = new Map();
-    if (layers.banjir?.features) {
-      layers.banjir.features.forEach(f => {
-        const kelName = f.properties.kelurahan?.trim().toUpperCase();
-        if (kelName) banjirMap.set(kelName, f.properties);
-      });
-    }
+    const cuacaMap = layers.banjir || {};
 
     return {
       ...layers.desa,
       features: layers.desa.features.map((f: any) => {
-        const riskData = banjirMap.get(f.properties.desa?.trim().toUpperCase());
+        const kelName = f.properties.desa?.trim().toUpperCase();
+        const cuacaData = cuacaMap[kelName] || {};
+        
+        let elevasi = cuacaData.elevasi !== undefined ? cuacaData.elevasi : 50;
+        let presipitasi = cuacaData.presipitasi || 0;
+        
+        // Kalkulasi Risiko Real-Time
+        let tingkat_risiko = 'RENDAH';
+        if (presipitasi > 10 && elevasi < 50) tingkat_risiko = 'TINGGI';
+        else if (presipitasi > 5 && elevasi < 100) tingkat_risiko = 'SEDANG';
+        else if (elevasi < 20) tingkat_risiko = 'SEDANG'; // Dataran rendah
+        if (presipitasi === 0 && elevasi > 100) tingkat_risiko = 'AMAN';
+
+        const riskScore = tingkat_risiko === 'TINGGI' ? 3 : tingkat_risiko === 'SEDANG' ? 2 : tingkat_risiko === 'RENDAH' ? 1 : 0;
+
         return {
           ...f,
           properties: {
             ...f.properties,
-            tingkat_risiko: riskData?.tingkat_risiko || null,
-            elevasi: riskData?.elevasi || null,
-            frekuensi_hujan: riskData?.frekuensi_hujan || null,
-            deskripsi: riskData?.deskripsi || null
+            tingkat_risiko,
+            riskScore,
+            elevasi,
+            presipitasi,
+            hujan: cuacaData.hujan || 0,
+            luas_area: 0 // Mock for sorting fallback
           }
         };
       })
@@ -149,8 +159,8 @@ export default function PetaInteraktif() {
     let all: any[] = [];
     if (filterBencana === 'Semua Bencana' || filterBencana === 'Banjir') {
       if (enrichedDesa?.features) {
-        // Only include those that have actual flood risk
-        all = [...all, ...enrichedDesa.features.filter((f:any) => f.properties.tingkat_risiko)];
+        // Only include those that have SEDANG or TINGGI risk
+        all = [...all, ...enrichedDesa.features.filter((f:any) => f.properties.riskScore > 1)];
       }
     }
     if (filterBencana === 'Semua Bencana' || filterBencana === 'Longsor') {
@@ -162,15 +172,17 @@ export default function PetaInteraktif() {
     }
 
     all.sort((a, b) => {
-      const risk: Record<string, number> = { TINGGI: 3, SEDANG: 2, RENDAH: 1 };
-      const valA = risk[a.properties?.tingkat_risiko || 'RENDAH'] || 0;
-      const valB = risk[b.properties?.tingkat_risiko || 'RENDAH'] || 0;
+      const valA = a.properties?.riskScore || 0;
+      const valB = b.properties?.riskScore || 0;
       if (valB !== valA) return valB - valA;
-      return (Number(b.properties?.luas_area) || 0) - (Number(a.properties?.luas_area) || 0);
+      // if same risk, sort by highest precipitation
+      const precA = a.properties?.presipitasi || 0;
+      const precB = b.properties?.presipitasi || 0;
+      return precB - precA;
     });
 
     return all.slice(0, 20);
-  }, [layers, filterWilayah, filterBencana]);
+  }, [enrichedDesa, layers.longsor, filterWilayah, filterBencana]);
 
   // Handle Route Fetching
   useEffect(() => {
@@ -343,8 +355,9 @@ export default function PetaInteraktif() {
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2.5 text-slate-400">{i + 1}.</td>
                     <td className="px-3 py-2.5">
-                      <div className="font-medium text-slate-700">{row.properties?.nama_wilayah || 'Unknown'}</div>
+                      <div className="font-medium text-slate-700">{row.properties?.desa || row.properties?.nama_wilayah || 'Unknown'}</div>
                       <div className="text-[10px] text-slate-400">{row.properties?.kecamatan || '-'}</div>
+                      <div className="text-[9px] text-blue-500 font-medium mt-0.5">Hujan: {row.properties?.presipitasi || 0}mm | Elevasi: {Math.round(row.properties?.elevasi || 0)}m</div>
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -434,7 +447,8 @@ export default function PetaInteraktif() {
                   const riskHtml = p.tingkat_risiko 
                     ? `<br/><span class="px-1.5 py-0.5 rounded text-[10px] text-white font-bold mt-1 inline-block shadow-sm" style="background:${getRisikoFillColor(p.tingkat_risiko)}">Risiko: ${p.tingkat_risiko}</span>` 
                     : '';
-                  layer.bindTooltip(`<div class="text-center"><span class="text-sm text-emerald-900 font-extrabold drop-shadow-sm">${p.desa}</span>${riskHtml}</div>`, { sticky: true, className: 'bg-white/90 border-0 shadow-md px-2 py-1' });
+                  const weatherHtml = `<div class="text-[9px] mt-1 text-slate-600 font-medium">Elevasi: ${Math.round(p.elevasi || 0)}m | Hujan: ${p.presipitasi || 0}mm ${p.hujan ? '🌧️' : ''}</div>`;
+                  layer.bindTooltip(`<div class="text-center"><span class="text-sm text-emerald-900 font-extrabold drop-shadow-sm">${p.desa}</span>${riskHtml}${weatherHtml}</div>`, { sticky: true, className: 'bg-white/95 border-0 shadow-lg px-3 py-1.5' });
                   layer.on('click', (e) => {
                     fetchCuaca(e.latlng.lat, e.latlng.lng, `Kel. ${p.desa}`);
                   });

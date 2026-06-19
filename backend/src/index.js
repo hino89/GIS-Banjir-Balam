@@ -132,14 +132,15 @@ app.get('/api/layer/wilayah-desa', async (req, res) => {
   const pool = require('./db/pool');
   try {
     const result = await pool.query(
-      `SELECT id, nama, ST_AsGeoJSON(geom) as geometry FROM wilayah_desa WHERE geom IS NOT NULL`
+      `SELECT id, nama, kecamatan, ST_AsGeoJSON(geom) as geometry FROM wilayah_desa WHERE geom IS NOT NULL`
     );
     const features = result.rows.map(r => ({ 
       type: 'Feature', 
       geometry: JSON.parse(r.geometry), 
       properties: { 
         id: r.id, 
-        desa: r.nama 
+        desa: r.nama,
+        kecamatan: r.kecamatan
       } 
     }));
     res.json({ type: 'FeatureCollection', features });

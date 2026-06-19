@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS wilayah_kecamatan (
 CREATE TABLE IF NOT EXISTS wilayah_desa (
     id SERIAL PRIMARY KEY,
     nama VARCHAR(100),
+    kecamatan VARCHAR(100),
     geom GEOMETRY(MultiPolygon, 4326)
 );
 

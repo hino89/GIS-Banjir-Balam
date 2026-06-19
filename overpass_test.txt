@@ -1,0 +1,4 @@
+[out:json];
+area["name"="Bandar Lampung"]["admin_level"="6"]->.a;
+relation["admin_level"="7"](area.a);
+out tags;

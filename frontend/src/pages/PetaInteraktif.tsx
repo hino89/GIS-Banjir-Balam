@@ -369,7 +369,7 @@ export default function PetaInteraktif() {
             </Overlay>
           )}
 
-          {layers.wilayah && (
+          {layers.wilayah && filterWilayah === 'Semua Wilayah' && (
             <Overlay checked name="🗺️ Batas Wilayah Kecamatan">
               <GeoJSON 
                 data={layers.wilayah} 
@@ -384,10 +384,11 @@ export default function PetaInteraktif() {
             </Overlay>
           )}
 
-          {layers.desa && (
+          {layers.desa && filterWilayah !== 'Semua Wilayah' && (
             <Overlay checked name="📍 Batas Desa/Kelurahan">
               <GeoJSON 
-                data={layers.desa} 
+                key={`desa-${filterWilayah}`}
+                data={filterFeatures(layers.desa)} 
                 style={{ color: '#10b981', weight: 1.5, opacity: 0.6, fillOpacity: 0.0, dashArray: '3, 4' }}
                 onEachFeature={(feature, layer) => {
                   layer.bindTooltip(`<span class="text-xs text-emerald-700 font-semibold">${feature.properties.desa}</span>`, { sticky: true, className: 'bg-white/70 border-0 shadow-none px-1 py-0.5' });

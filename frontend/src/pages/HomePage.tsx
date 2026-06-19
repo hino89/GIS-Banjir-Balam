@@ -16,7 +16,6 @@ interface StatsData {
 }
 
 const statCards = [
-  { key: 'total_daerah_rawan', label: 'Daerah Rawan', icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', link: '/daerah-rawan' },
   { key: 'total_jalur_evakuasi', label: 'Jalur Evakuasi', icon: Route, color: 'text-green-500', bg: 'bg-green-50', link: '/jalur-evakuasi' },
   { key: 'total_pengungsian', label: 'Titik Pengungsian', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50', link: '/pengungsian' },
   { key: 'jalan_terdampak', label: 'Jalan Terdampak', icon: Navigation, color: 'text-orange-500', bg: 'bg-orange-50', link: '/kondisi-jalan' },
@@ -160,7 +159,6 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: MapPin, color: 'blue', title: 'Peta Interaktif', desc: 'Visualisasi data spasial dengan 10+ layer peta yang dapat dikonfigurasi secara dinamis menggunakan Leaflet.js' },
-              { icon: AlertTriangle, color: 'red', title: 'Monitoring Daerah Rawan', desc: 'Pemantauan real-time daerah rawan banjir dengan klasifikasi risiko berdasarkan elevasi dan curah hujan' },
               { icon: Route, color: 'green', title: 'Jalur Evakuasi', desc: 'Manajemen jalur evakuasi, distribusi bantuan, dan jalur alternatif jika jalan tergenang banjir' },
               { icon: Building2, color: 'purple', title: 'Titik Pengungsian', desc: 'Informasi lengkap kapasitas, fasilitas, dan status aktif titik pengungsian banjir di seluruh kota' },
               { icon: Truck, color: 'orange', title: 'Tracking Alat Berat', desc: 'Pemantauan lokasi alat berat (pompa, excavator) untuk optimasi pengerahan sumber daya' },

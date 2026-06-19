@@ -37,7 +37,6 @@ export default function AdminDashboard() {
   };
 
   const statCards = stats ? [
-    { label: 'Daerah Rawan', value: stats.total_rawan, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100' },
     { label: 'Jalur Evakuasi', value: stats.total_evakuasi, icon: Route, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100' },
     { label: 'Titik Pengungsian', value: stats.total_pengungsian, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100' },
     { label: 'Alat Berat', value: stats.total_alat_berat, icon: Truck, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100' },

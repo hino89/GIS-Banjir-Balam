@@ -10,7 +10,6 @@ import toast from 'react-hot-toast';
 
 const sidebarLinks = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/admin/daerah-rawan', label: 'Daerah Rawan', icon: AlertTriangle },
   { to: '/admin/jalur-evakuasi', label: 'Jalur Evakuasi', icon: Route },
   { to: '/admin/pengungsian', label: 'Pengungsian', icon: Building2 },
   { to: '/admin/alat-berat', label: 'Alat Berat', icon: Truck },

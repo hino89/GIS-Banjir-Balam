@@ -28,7 +28,7 @@ router.get('/all-kelurahan', async (req, res) => {
     const lats = kelurahanList.map(k => k.lat.toFixed(5)).join(',');
     const lons = kelurahanList.map(k => k.lon.toFixed(5)).join(',');
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation,rain&elevation=nan&timezone=Asia%2FJakarta`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation,rain&timezone=Asia%2FJakarta`;
     
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch Open-Meteo API');

@@ -9,7 +9,6 @@ import AdminSidebar from './components/admin/AdminSidebar';
 // Public Pages
 import HomePage from './pages/HomePage';
 import PetaInteraktif from './pages/PetaInteraktif';
-import DaerahRawanPage from './pages/DaerahRawanPage';
 import JalurEvakuasiPage from './pages/JalurEvakuasiPage';
 import PengungsianPage from './pages/PengungsianPage';
 import KondisiJalanPage from './pages/KondisiJalanPage';
@@ -18,7 +17,6 @@ import LoginPage from './pages/LoginPage';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminDaerahRawan from './pages/admin/AdminDaerahRawan';
 import AdminJalurEvakuasi from './pages/admin/AdminJalurEvakuasi';
 import AdminPengungsian from './pages/admin/AdminPengungsian';
 import AdminLaporan from './pages/admin/AdminLaporan';
@@ -84,7 +82,6 @@ function App() {
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/peta" element={<PetaInteraktif />} />
-            <Route path="/daerah-rawan" element={<DaerahRawanPage />} />
             <Route path="/jalur-evakuasi" element={<JalurEvakuasiPage />} />
             <Route path="/pengungsian" element={<PengungsianPage />} />
             <Route path="/kondisi-jalan" element={<KondisiJalanPage />} />
@@ -94,7 +91,6 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
-            <Route path="daerah-rawan" element={<AdminDaerahRawan />} />
             <Route path="jalur-evakuasi" element={<AdminJalurEvakuasi />} />
             <Route path="pengungsian" element={<AdminPengungsian />} />
             <Route path="alat-berat" element={<AdminPlaceholder title="Alat Berat" />} />

@@ -1,0 +1,1 @@
+fetch('https://api.open-meteo.com/v1/forecast?latitude=-5.4&longitude=105.2&current=precipitation,rain&elevation=nan&timezone=Asia%2FJakarta').then(r => r.json()).then(console.log).catch(console.error);

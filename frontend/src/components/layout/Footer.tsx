@@ -28,8 +28,8 @@ export default function Footer() {
             <h3 className="font-semibold text-sm mb-4 text-blue-300 uppercase tracking-wide">Menu</h3>
             <div className="flex flex-col gap-2 text-sm text-blue-200">
               {[
-                ['/', 'Beranda'], ['/peta', 'Peta Interaktif'],
-                ['/daerah-rawan', 'Daerah Rawan'], ['/jalur-evakuasi', 'Jalur Evakuasi'],
+                ['/peta', 'Peta Interaktif'],
+                ['/jalur-evakuasi', 'Jalur Evakuasi'],
                 ['/pengungsian', 'Titik Pengungsian'], ['/kondisi-jalan', 'Kondisi Jalan'],
               ].map(([to, label]) => (
                 <Link key={to} to={to} className="hover:text-white transition-colors">{label}</Link>

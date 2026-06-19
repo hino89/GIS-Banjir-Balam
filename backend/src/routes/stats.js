@@ -6,7 +6,7 @@ const pool = require('../db/pool');
 router.get('/', async (req, res) => {
   try {
     const [rawan, evakuasi, pengungsian, alatBerat, jalan, laporan] = await Promise.all([
-      pool.query('SELECT COUNT(*) as total FROM daerah_rawan'),
+      pool.query('SELECT 0 as total'), // placeholder for rawan
       pool.query('SELECT COUNT(*) as total FROM jalur_evakuasi WHERE status = \'AKTIF\''),
       pool.query('SELECT COUNT(*) as total FROM titik_pengungsian WHERE status_aktif = true'),
       pool.query('SELECT COUNT(*) as total FROM alat_berat WHERE status = \'TERSEDIA\''),
@@ -14,18 +14,9 @@ router.get('/', async (req, res) => {
       pool.query('SELECT COUNT(*) as total FROM laporan_warga WHERE status = \'MENUNGGU\''),
     ]);
 
-    const [rawanByRisiko, rawanByBencana] = await Promise.all([
-      pool.query(`SELECT tingkat_risiko, COUNT(*) as count FROM daerah_rawan GROUP BY tingkat_risiko`),
-      pool.query(`SELECT jenis_bencana, COUNT(*) as count FROM daerah_rawan GROUP BY jenis_bencana ORDER BY count DESC`),
-    ]);
-
-    const kecamatanStats = await pool.query(`
-      SELECT kecamatan, COUNT(*) as rawan_count,
-             COUNT(CASE WHEN tingkat_risiko = 'TINGGI' THEN 1 END) as tinggi,
-             COUNT(CASE WHEN tingkat_risiko = 'SEDANG' THEN 1 END) as sedang,
-             COUNT(CASE WHEN tingkat_risiko = 'RENDAH' THEN 1 END) as rendah
-      FROM daerah_rawan GROUP BY kecamatan ORDER BY rawan_count DESC LIMIT 10
-    `);
+    const rawanByRisiko = { rows: [] };
+    const rawanByBencana = { rows: [] };
+    const kecamatanStats = { rows: [] };
 
     res.json({
       success: true,
@@ -52,7 +43,7 @@ router.get('/', async (req, res) => {
 router.get('/admin', async (req, res) => {
   try {
     const results = await Promise.all([
-      pool.query('SELECT COUNT(*) as total FROM daerah_rawan'),
+      pool.query('SELECT 0 as total'), // placeholder for total_rawan
       pool.query('SELECT COUNT(*) as total FROM jalur_evakuasi'),
       pool.query('SELECT COUNT(*) as total FROM titik_pengungsian'),
       pool.query('SELECT COUNT(*) as total FROM alat_berat'),

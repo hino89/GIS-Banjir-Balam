@@ -4,8 +4,7 @@ import { MapPin, Menu, X, ShieldAlert, Home, Map, Route, Building2, Navigation, 
 
 const navLinks = [
   { to: '/', label: 'Beranda', icon: Home },
-  { to: '/peta', label: 'Peta Interaktif', icon: Map },
-  { to: '/daerah-rawan', label: 'Daerah Rawan', icon: AlertTriangle },
+  { to: '/peta', label: 'Peta Interaktif', icon: MapPin },
   { to: '/jalur-evakuasi', label: 'Jalur Evakuasi', icon: Route },
   { to: '/pengungsian', label: 'Pengungsian', icon: Building2 },
   { to: '/kondisi-jalan', label: 'Kondisi Jalan', icon: Navigation },

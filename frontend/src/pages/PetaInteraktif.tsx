@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, GeoJSON, ZoomControl, LayersControl, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { ChevronDown, Navigation, MapPin, X, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Navigation, MapPin, X, AlertTriangle, CloudRain, Droplets, Thermometer } from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { divIcon } from 'leaflet';
 import { layerAPI } from '../services/api';
@@ -45,6 +45,7 @@ function MapClickHandler({ routingMode, routeStart, routeEnd, setRouteStart, set
 export default function PetaInteraktif() {
   const [layers, setLayers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [cuaca, setCuaca] = useState<any>(null);
   
   // Floating Filters
   const [filterWilayah, setFilterWilayah] = useState('Semua Wilayah');
@@ -84,6 +85,12 @@ export default function PetaInteraktif() {
       } finally {
         setLoading(false);
       }
+      
+      // Fetch Cuaca
+      fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/cuaca/curah-hujan')
+        .then(r => r.json())
+        .then(d => { if (d.success) setCuaca(d.data); })
+        .catch(console.error);
     };
     fetchAll();
   }, []);
@@ -183,7 +190,6 @@ export default function PetaInteraktif() {
           >
             <option value="Semua Bencana">Semua Bencana</option>
             <option value="Banjir">Banjir</option>
-            <option value="Longsor">Longsor</option>
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
@@ -265,8 +271,30 @@ export default function PetaInteraktif() {
         </div>
       )}
 
+      {/* FLOATING CUACA WIDGET */}
+      {cuaca && (
+        <div className="absolute top-4 right-4 z-[400] w-72 bg-white/95 backdrop-blur shadow-xl border border-blue-200 rounded-lg overflow-hidden animate-slide-up">
+          <div className="p-3 bg-gradient-to-r from-blue-600 to-blue-400 text-white flex justify-between items-center">
+            <span className="text-sm font-bold flex items-center gap-2"><CloudRain className="w-4 h-4" /> Cuaca Real-time</span>
+            <span className="text-xs">{new Date(cuaca.waktu).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center p-2 bg-blue-50 rounded border border-blue-100">
+              <Thermometer className="w-5 h-5 text-blue-500 mb-1" />
+              <span className="text-xs text-slate-500">Suhu</span>
+              <span className="font-bold text-slate-700">{cuaca.temperatur}°C</span>
+            </div>
+            <div className="flex flex-col items-center p-2 bg-blue-50 rounded border border-blue-100">
+              <Droplets className="w-5 h-5 text-blue-500 mb-1" />
+              <span className="text-xs text-slate-500">Curah Hujan</span>
+              <span className="font-bold text-slate-700">{cuaca.presipitasi} mm</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FLOATING RANKING PANEL (RIGHT) */}
-      <div className="absolute top-4 right-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-100px)] animate-slide-up hidden md:flex">
+      <div className="absolute top-36 right-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-180px)] animate-slide-up hidden md:flex">
         <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <span className="text-sm font-bold text-slate-700 tracking-wider">
             RANKING {filterBencana !== 'Semua Bencana' ? filterBencana.toUpperCase() : 'BENCANA'}
@@ -409,33 +437,8 @@ export default function PetaInteraktif() {
                         <tr><td class="py-1 text-slate-400">Kelurahan</td><td class="py-1 font-medium">${p.kelurahan || '-'}</td></tr>
                         <tr><td class="py-1 text-slate-400">Risiko</td><td class="py-1"><span class="px-1.5 py-0.5 rounded text-white font-bold" style="background:${getRisikoFillColor(p.tingkat_risiko)}">${p.tingkat_risiko || 'SEDANG'}</span></td></tr>
                         ${p.luas_area ? `<tr><td class="py-1 text-slate-400">Luas Area</td><td class="py-1 font-medium">${p.luas_area} Ha</td></tr>` : ''}
-                        ${p.deskripsi ? `<tr><td colspan="2" class="pt-2"><div class="bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100">"${p.deskripsi}"</div></td></tr>` : ''}
-                      </table>
-                    </div>
-                  `);
-                }}
-              />
-            </Overlay>
-          )}
-
-          {layers.longsor && (
-            <Overlay checked={filterBencana === 'Semua Bencana' || filterBencana === 'Longsor'} name="⛰️ Daerah Rawan Longsor">
-              <GeoJSON 
-                key={`longsor-${filterWilayah}`}
-                data={filterFeatures(layers.longsor)} 
-                style={(f: any) => ({ ...risikoStyle(f.properties?.tingkat_risiko), fillColor: '#f59e0b' })}
-                onEachFeature={(feature, layer) => {
-                  const p = feature.properties;
-                  layer.bindPopup(`
-                    <div class="map-popup p-3 min-w-[200px]">
-                      <div class="font-bold text-slate-800 text-[15px] mb-2 border-b pb-2 border-slate-200 flex items-center gap-2">
-                        ⛰️ ${p.nama_wilayah}
-                      </div>
-                      <table class="w-full text-xs text-slate-600">
-                        <tr><td class="py-1 w-20 text-slate-400">Kecamatan</td><td class="py-1 font-medium">${p.kecamatan || '-'}</td></tr>
-                        <tr><td class="py-1 text-slate-400">Kelurahan</td><td class="py-1 font-medium">${p.kelurahan || '-'}</td></tr>
-                        <tr><td class="py-1 text-slate-400">Risiko</td><td class="py-1"><span class="px-1.5 py-0.5 rounded text-white font-bold" style="background:${getRisikoFillColor(p.tingkat_risiko)}">${p.tingkat_risiko || 'SEDANG'}</span></td></tr>
-                        ${p.luas_area ? `<tr><td class="py-1 text-slate-400">Luas Area</td><td class="py-1 font-medium">${p.luas_area} Ha</td></tr>` : ''}
+                        ${p.elevasi ? `<tr><td class="py-1 text-slate-400">Elevasi</td><td class="py-1 font-medium">${p.elevasi} mdpl</td></tr>` : ''}
+                        ${p.frekuensi_hujan ? `<tr><td class="py-1 text-slate-400">Frek. Hujan</td><td class="py-1 font-medium text-[10px] leading-tight">${p.frekuensi_hujan}</td></tr>` : ''}
                         ${p.deskripsi ? `<tr><td colspan="2" class="pt-2"><div class="bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100">"${p.deskripsi}"</div></td></tr>` : ''}
                       </table>
                     </div>

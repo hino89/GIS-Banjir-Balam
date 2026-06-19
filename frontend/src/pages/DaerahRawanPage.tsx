@@ -6,6 +6,7 @@ import { getRisikoColor, getBencanaColor, formatDateShort, KECAMATAN_OPTIONS, JE
 interface DaerahRawan {
   id: number; nama_wilayah: string; kecamatan: string; kelurahan: string;
   jenis_bencana: string; tingkat_risiko: string; luas_area: number;
+  elevasi?: number; frekuensi_hujan?: string;
   deskripsi: string; created_at: string;
 }
 
@@ -131,6 +132,8 @@ export default function DaerahRawanPage() {
                     <th>Jenis Bencana</th>
                     <th>Tingkat Risiko</th>
                     <th>Luas Area</th>
+                    <th>Elevasi</th>
+                    <th>Frekuensi Hujan</th>
                     <th>Update</th>
                     <th>Aksi</th>
                   </tr>
@@ -151,6 +154,8 @@ export default function DaerahRawanPage() {
                       </td>
                       <td><span className={getRisikoColor(row.tingkat_risiko)}>{row.tingkat_risiko}</span></td>
                       <td className="text-slate-600">{row.luas_area ? `${row.luas_area.toFixed(1)} Ha` : '-'}</td>
+                      <td className="text-slate-600">{row.elevasi ? `${row.elevasi} mdpl` : '-'}</td>
+                      <td className="text-slate-600">{row.frekuensi_hujan || '-'}</td>
                       <td className="text-slate-400 text-xs">{formatDateShort(row.created_at)}</td>
                       <td>
                         <button className="btn-icon text-primary-600 hover:bg-primary-50">

@@ -99,12 +99,12 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-800 tracking-tight leading-[1.15] mb-6">
             Sistem Informasi Geografis
             <span className="block text-primary-600">Mitigasi & Penanggulangan</span>
-            <span className="block">Bencana Bandar Lampung</span>
+            <span className="block">Banjir Bandar Lampung</span>
           </h1>
 
           <p className="text-lg text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-            Platform GIS terpadu untuk pemetaan daerah rawan, jalur evakuasi, titik pengungsian,
-            dan koordinasi penanggulangan bencana Kota Bandar Lampung secara real-time.
+            Platform GIS terpadu untuk pemetaan daerah rawan banjir (elevasi & curah hujan), jalur evakuasi, titik pengungsian,
+            dan koordinasi penanggulangan banjir Kota Bandar Lampung secara real-time.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center">
@@ -114,7 +114,7 @@ export default function HomePage() {
             </Link>
             <Link to="/daerah-rawan" className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-8 py-3.5 text-base rounded-xl shadow-sm transition-all font-medium inline-flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Informasi Bencana
+              Informasi Banjir
             </Link>
           </div>
 
@@ -129,8 +129,8 @@ export default function HomePage() {
       <section className="py-16 px-4 bg-slate-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-slate-800 mb-2">Statistik Mitigasi Bencana</h2>
-            <p className="text-slate-500">Data terkini sistem penanggulangan bencana Kota Bandar Lampung</p>
+            <h2 className="text-3xl font-bold text-slate-800 mb-2">Statistik Mitigasi Banjir</h2>
+            <p className="text-slate-500">Data terkini sistem penanggulangan banjir Kota Bandar Lampung</p>
           </div>
 
           {statsLoading ? (
@@ -154,17 +154,17 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-slate-800 mb-2">Fitur Unggulan Sistem</h2>
-            <p className="text-slate-500">Solusi GIS terpadu untuk manajemen kebencanaan modern</p>
+            <p className="text-slate-500">Solusi GIS terpadu untuk manajemen banjir modern</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: MapPin, color: 'blue', title: 'Peta Interaktif', desc: 'Visualisasi data spasial dengan 10+ layer peta yang dapat dikonfigurasi secara dinamis menggunakan Leaflet.js' },
-              { icon: AlertTriangle, color: 'red', title: 'Monitoring Daerah Rawan', desc: 'Pemantauan real-time daerah rawan banjir, longsor, dan bencana lainnya dengan tingkat risiko terklasifikasi' },
-              { icon: Route, color: 'green', title: 'Jalur Evakuasi', desc: 'Manajemen jalur evakuasi, distribusi bantuan, dan jalur alternatif yang terintegrasi dengan peta digital' },
-              { icon: Building2, color: 'purple', title: 'Titik Pengungsian', desc: 'Informasi lengkap kapasitas, fasilitas, dan status aktif setiap titik pengungsian di seluruh kota' },
-              { icon: Truck, color: 'orange', title: 'Tracking Alat Berat', desc: 'Pemantauan lokasi dan status alat berat untuk optimasi pengerahan sumber daya penanggulangan' },
-              { icon: Activity, color: 'yellow', title: 'Laporan Warga', desc: 'Platform pelaporan bencana berbasis komunitas dengan verifikasi admin dan notifikasi real-time' },
+              { icon: AlertTriangle, color: 'red', title: 'Monitoring Daerah Rawan', desc: 'Pemantauan real-time daerah rawan banjir dengan klasifikasi risiko berdasarkan elevasi dan curah hujan' },
+              { icon: Route, color: 'green', title: 'Jalur Evakuasi', desc: 'Manajemen jalur evakuasi, distribusi bantuan, dan jalur alternatif jika jalan tergenang banjir' },
+              { icon: Building2, color: 'purple', title: 'Titik Pengungsian', desc: 'Informasi lengkap kapasitas, fasilitas, dan status aktif titik pengungsian banjir di seluruh kota' },
+              { icon: Truck, color: 'orange', title: 'Tracking Alat Berat', desc: 'Pemantauan lokasi alat berat (pompa, excavator) untuk optimasi pengerahan sumber daya' },
+              { icon: Activity, color: 'yellow', title: 'Laporan Warga', desc: 'Platform pelaporan titik banjir berbasis komunitas dengan verifikasi admin dan notifikasi real-time' },
             ].map((feature, i) => (
               <motion.div
                 key={i}
@@ -188,9 +188,9 @@ export default function HomePage() {
       {/* ==================== CTA ==================== */}
       <section className="py-20 px-4 bg-primary-600">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Siap Menghadapi Bencana?</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">Waspada Musim Hujan!</h2>
           <p className="text-primary-100 mb-8 leading-relaxed font-light">
-            Laporkan kejadian bencana di sekitar Anda atau akses informasi jalur evakuasi terdekat.
+            Laporkan titik genangan banjir di sekitar Anda atau akses informasi jalur evakuasi terdekat.
             Sistem kami siap membantu 24/7.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">

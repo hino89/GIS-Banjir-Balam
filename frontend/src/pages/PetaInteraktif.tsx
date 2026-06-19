@@ -46,6 +46,7 @@ export default function PetaInteraktif() {
   const [layers, setLayers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [cuaca, setCuaca] = useState<any>(null);
+  const [cuacaLoading, setCuacaLoading] = useState(false);
   
   // Floating Filters
   const [filterWilayah, setFilterWilayah] = useState('Semua Wilayah');
@@ -85,14 +86,25 @@ export default function PetaInteraktif() {
       } finally {
         setLoading(false);
       }
-      
-      // Fetch Cuaca
-      fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/cuaca/curah-hujan')
-        .then(r => r.json())
-        .then(d => { if (d.success) setCuaca(d.data); })
-        .catch(console.error);
+      fetchCuaca();
     };
     fetchAll();
+  }, []);
+
+  const fetchCuaca = useCallback((lat?: number, lon?: number, lokasi?: string) => {
+    setCuacaLoading(true);
+    let url = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/cuaca/curah-hujan';
+    const params = new URLSearchParams();
+    if (lat) params.append('lat', lat.toString());
+    if (lon) params.append('lon', lon.toString());
+    if (lokasi) params.append('lokasi', lokasi);
+    if (params.toString()) url += '?' + params.toString();
+
+    fetch(url)
+      .then(r => r.json())
+      .then(d => { if (d.success) setCuaca(d.data); })
+      .catch(console.error)
+      .finally(() => setCuacaLoading(false));
   }, []);
 
   const filterFeatures = useCallback((geojson: any) => {
@@ -273,10 +285,10 @@ export default function PetaInteraktif() {
 
       {/* FLOATING CUACA WIDGET */}
       {cuaca && (
-        <div className="absolute top-4 right-4 z-[400] w-72 bg-white/95 backdrop-blur shadow-xl border border-blue-200 rounded-lg overflow-hidden animate-slide-up">
+        <div className={`absolute top-4 right-4 z-[400] w-72 bg-white/95 backdrop-blur shadow-xl border border-blue-200 rounded-lg overflow-hidden animate-slide-up transition-opacity duration-300 ${cuacaLoading ? 'opacity-50' : 'opacity-100'}`}>
           <div className="p-3 bg-gradient-to-r from-blue-600 to-blue-400 text-white flex justify-between items-center">
-            <span className="text-sm font-bold flex items-center gap-2"><CloudRain className="w-4 h-4" /> Cuaca Real-time</span>
-            <span className="text-xs">{new Date(cuaca.waktu).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            <span className="text-sm font-bold flex items-center gap-2 truncate pr-2"><CloudRain className="w-4 h-4 shrink-0" /> {cuaca.lokasi}</span>
+            <span className="text-xs shrink-0">{new Date(cuaca.waktu).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
           </div>
           <div className="p-4 grid grid-cols-2 gap-4">
             <div className="flex flex-col items-center p-2 bg-blue-50 rounded border border-blue-100">
@@ -294,7 +306,7 @@ export default function PetaInteraktif() {
       )}
 
       {/* FLOATING RANKING PANEL (RIGHT) */}
-      <div className="absolute top-36 right-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-180px)] animate-slide-up hidden md:flex">
+      <div className="absolute top-44 right-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-210px)] animate-slide-up hidden md:flex">
         <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <span className="text-sm font-bold text-slate-700 tracking-wider">
             RANKING {filterBencana !== 'Semua Bencana' ? filterBencana.toUpperCase() : 'BENCANA'}
@@ -355,6 +367,9 @@ export default function PetaInteraktif() {
           <BaseLayer checked name="Peta Minimalis (Terang)">
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
           </BaseLayer>
+          <BaseLayer name="Peta Topografi (Kontur Elevasi)">
+            <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" attribution="&copy; OpenTopoMap" maxZoom={17} />
+          </BaseLayer>
           <BaseLayer name="OpenStreetMap">
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
           </BaseLayer>
@@ -378,6 +393,9 @@ export default function PetaInteraktif() {
                 style={{ color: '#64748b', weight: 2, opacity: 0.8, fillOpacity: 0.05, dashArray: '5, 5' }}
                 onEachFeature={(feature, layer) => {
                   layer.bindTooltip(`<b>${feature.properties.kecamatan}</b>`, { sticky: true, className: 'bg-white/90 text-slate-700 font-bold border-0 shadow-sm px-2 py-1' });
+                  layer.on('click', (e) => {
+                    fetchCuaca(e.latlng.lat, e.latlng.lng, `Kec. ${feature.properties.kecamatan}`);
+                  });
                 }}
               />
             </Overlay>
@@ -390,6 +408,9 @@ export default function PetaInteraktif() {
                 style={{ color: '#10b981', weight: 1.5, opacity: 0.6, fillOpacity: 0.0, dashArray: '3, 4' }}
                 onEachFeature={(feature, layer) => {
                   layer.bindTooltip(`<span class="text-xs text-emerald-700 font-semibold">${feature.properties.desa}</span>`, { sticky: true, className: 'bg-white/70 border-0 shadow-none px-1 py-0.5' });
+                  layer.on('click', (e) => {
+                    fetchCuaca(e.latlng.lat, e.latlng.lng, `Kel. ${feature.properties.desa}`);
+                  });
                 }}
               />
             </Overlay>
@@ -443,6 +464,9 @@ export default function PetaInteraktif() {
                       </table>
                     </div>
                   `);
+                  layer.on('click', (e) => {
+                    fetchCuaca(e.latlng.lat, e.latlng.lng, p.nama_wilayah);
+                  });
                 }}
               />
             </Overlay>

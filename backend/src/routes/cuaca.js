@@ -3,9 +3,10 @@ const router = express.Router();
 
 router.get('/curah-hujan', async (req, res) => {
   try {
-    // Koordinat Bandar Lampung
-    const lat = -5.4294;
-    const lon = 105.2662;
+    // Koordinat default: Bandar Lampung
+    const lat = req.query.lat ? parseFloat(req.query.lat) : -5.4294;
+    const lon = req.query.lon ? parseFloat(req.query.lon) : 105.2662;
+    const lokasi = req.query.lokasi || 'Bandar Lampung';
     
     // Fetch data curah hujan dari Open-Meteo API
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code&timezone=Asia%2FJakarta`);
@@ -19,7 +20,7 @@ router.get('/curah-hujan', async (req, res) => {
     res.json({
       success: true,
       data: {
-        lokasi: 'Bandar Lampung',
+        lokasi: lokasi,
         waktu: data.current.time,
         temperatur: data.current.temperature_2m,
         kelembapan: data.current.relative_humidity_2m,

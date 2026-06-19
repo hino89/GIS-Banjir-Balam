@@ -18,25 +18,22 @@ async function seed() {
 
   // ==================== DAERAH RAWAN ====================
   const daerahRawanData = [
-    ['Kelurahan Campang Raya', 'Sukabumi', 'Campang Raya', 'Banjir', 'TINGGI', 125.5, 'Daerah dataran rendah sering tergenang saat hujan deras', 'POLYGON((105.2450 -5.3750, 105.2520 -5.3750, 105.2520 -5.3820, 105.2450 -5.3820, 105.2450 -5.3750))'],
-    ['Kelurahan Way Halim', 'Way Halim', 'Way Halim Permai', 'Banjir', 'SEDANG', 89.3, 'Permukiman padat dengan drainase kurang memadai', 'POLYGON((105.2800 -5.3950, 105.2870 -5.3950, 105.2870 -5.4020, 105.2800 -5.4020, 105.2800 -5.3950))'],
-    ['Kelurahan Kedamaian', 'Kedamaian', 'Kedamaian', 'Banjir', 'TINGGI', 210.8, 'Dekat sungai Way Kuripan rawan banjir kiriman', 'POLYGON((105.2600 -5.3600, 105.2700 -5.3600, 105.2700 -5.3700, 105.2600 -5.3700, 105.2600 -5.3600))'],
-    ['Bukit Camang', 'Langkapura', 'Langkapura', 'Longsor', 'TINGGI', 45.2, 'Lereng bukit kemiringan >40 derajat rentan longsor', 'POLYGON((105.2200 -5.3800, 105.2280 -5.3800, 105.2280 -5.3870, 105.2200 -5.3870, 105.2200 -5.3800))'],
-    ['Kawasan Bukit Sukamenanti', 'Sukabumi', 'Sukamenanti', 'Longsor', 'SEDANG', 67.9, 'Area perbukitan dengan vegetasi berkurang', 'POLYGON((105.2350 -5.3700, 105.2430 -5.3700, 105.2430 -5.3780, 105.2350 -5.3780, 105.2350 -5.3700))'],
-    ['Kelurahan Sawah Lama', 'Tanjung Karang Timur', 'Sawah Lama', 'Banjir', 'SEDANG', 156.4, 'Area persawahan berubah fungsi menjadi permukiman', 'POLYGON((105.2900 -5.4100, 105.2980 -5.4100, 105.2980 -5.4180, 105.2900 -5.4180, 105.2900 -5.4100))'],
-    ['Panjang Utara', 'Panjang', 'Panjang Utara', 'Banjir Rob', 'TINGGI', 312.7, 'Kawasan pesisir rentan banjir rob dan abrasi', 'POLYGON((105.2950 -5.4600, 105.3100 -5.4600, 105.3100 -5.4750, 105.2950 -5.4750, 105.2950 -5.4600))'],
-    ['Kelurahan Gedong Pakuon', 'Teluk Betung Selatan', 'Gedong Pakuon', 'Banjir', 'RENDAH', 78.5, 'Daerah risiko banjir rendah sistem drainase baik', 'POLYGON((105.2750 -5.4350, 105.2820 -5.4350, 105.2820 -5.4420, 105.2750 -5.4420, 105.2750 -5.4350))'],
-    ['Kawasan Rajabasa', 'Rajabasa', 'Rajabasa', 'Longsor', 'SEDANG', 134.6, 'Kawasan perbukitan dengan permukiman padat', 'POLYGON((105.2280 -5.3600, 105.2380 -5.3600, 105.2380 -5.3700, 105.2280 -5.3700, 105.2280 -5.3600))'],
-    ['Kelurahan Jagabaya III', 'Way Halim', 'Jagabaya III', 'Banjir', 'SEDANG', 92.1, 'Kawasan elevasi rendah di tepi sungai kecil', 'POLYGON((105.2720 -5.3900, 105.2800 -5.3900, 105.2800 -5.3970, 105.2720 -5.3970, 105.2720 -5.3900))'],
+    ['Kelurahan Campang Raya', 'Sukabumi', 'Campang Raya', 'Banjir', 'TINGGI', 125.5, 5.2, 'Sangat Sering (>3000mm/thn)', 'Daerah dataran rendah sering tergenang saat hujan deras', 'POLYGON((105.2450 -5.3750, 105.2520 -5.3750, 105.2520 -5.3820, 105.2450 -5.3820, 105.2450 -5.3750))'],
+    ['Kelurahan Way Halim', 'Way Halim', 'Way Halim Permai', 'Banjir', 'SEDANG', 89.3, 12.5, 'Sering (2500-3000mm/thn)', 'Permukiman padat dengan drainase kurang memadai', 'POLYGON((105.2800 -5.3950, 105.2870 -5.3950, 105.2870 -5.4020, 105.2800 -5.4020, 105.2800 -5.3950))'],
+    ['Kelurahan Kedamaian', 'Kedamaian', 'Kedamaian', 'Banjir', 'TINGGI', 210.8, 8.4, 'Sangat Sering (>3000mm/thn)', 'Dekat sungai Way Kuripan rawan banjir kiriman', 'POLYGON((105.2600 -5.3600, 105.2700 -5.3600, 105.2700 -5.3700, 105.2600 -5.3700, 105.2600 -5.3600))'],
+    ['Kelurahan Sawah Lama', 'Tanjung Karang Timur', 'Sawah Lama', 'Banjir', 'SEDANG', 156.4, 15.0, 'Sedang (2000-2500mm/thn)', 'Area persawahan berubah fungsi menjadi permukiman', 'POLYGON((105.2900 -5.4100, 105.2980 -5.4100, 105.2980 -5.4180, 105.2900 -5.4180, 105.2900 -5.4100))'],
+    ['Panjang Utara', 'Panjang', 'Panjang Utara', 'Banjir Rob', 'TINGGI', 312.7, 1.5, 'Pasang Surut Laut', 'Kawasan pesisir rentan banjir rob dan abrasi', 'POLYGON((105.2950 -5.4600, 105.3100 -5.4600, 105.3100 -5.4750, 105.2950 -5.4750, 105.2950 -5.4600))'],
+    ['Kelurahan Gedong Pakuon', 'Teluk Betung Selatan', 'Gedong Pakuon', 'Banjir', 'RENDAH', 78.5, 25.0, 'Jarang (<2000mm/thn)', 'Daerah risiko banjir rendah sistem drainase baik', 'POLYGON((105.2750 -5.4350, 105.2820 -5.4350, 105.2820 -5.4420, 105.2750 -5.4420, 105.2750 -5.4350))'],
+    ['Kelurahan Jagabaya III', 'Way Halim', 'Jagabaya III', 'Banjir', 'SEDANG', 92.1, 10.2, 'Sering (2500-3000mm/thn)', 'Kawasan elevasi rendah di tepi sungai kecil', 'POLYGON((105.2720 -5.3900, 105.2800 -5.3900, 105.2800 -5.3970, 105.2720 -5.3970, 105.2720 -5.3900))'],
   ];
 
   for (const row of daerahRawanData) {
     await pool.query(`
-      INSERT INTO daerah_rawan (nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, deskripsi, geom)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, ST_GeomFromText($8, 4326))
+      INSERT INTO daerah_rawan (nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi, geom)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, ST_GeomFromText($10, 4326))
     `, row);
   }
-  console.log('✅ Daerah rawan seeded');
+  console.log('✅ Daerah rawan banjir seeded');
 
   // ==================== JALUR EVAKUASI ====================
   const jalurEvakuasiData = [

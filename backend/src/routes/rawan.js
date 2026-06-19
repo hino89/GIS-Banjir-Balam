@@ -7,7 +7,7 @@ const { authMiddleware, adminOnly } = require('../middleware/auth');
 router.get('/', async (req, res) => {
   try {
     const { kecamatan, jenis_bencana, tingkat_risiko } = req.query;
-    let query = `SELECT id, nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, deskripsi,
+    let query = `SELECT id, nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi,
       ST_AsGeoJSON(geom) as geojson, created_at, updated_at FROM daerah_rawan WHERE 1=1`;
     const params = [];
 
@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 router.get('/geojson', async (req, res) => {
   try {
     const { jenis_bencana } = req.query;
-    let query = `SELECT id, nama_wilayah, kecamatan, jenis_bencana, tingkat_risiko, luas_area, deskripsi,
+    let query = `SELECT id, nama_wilayah, kecamatan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi,
       ST_AsGeoJSON(geom) as geometry FROM daerah_rawan WHERE geom IS NOT NULL`;
     const params = [];
     if (jenis_bencana) { params.push(jenis_bencana); query += ` AND jenis_bencana = $${params.length}`; }
@@ -46,7 +46,7 @@ router.get('/geojson', async (req, res) => {
       properties: {
         id: r.id, nama_wilayah: r.nama_wilayah, kecamatan: r.kecamatan,
         jenis_bencana: r.jenis_bencana, tingkat_risiko: r.tingkat_risiko,
-        luas_area: r.luas_area, deskripsi: r.deskripsi
+        luas_area: r.luas_area, elevasi: r.elevasi, frekuensi_hujan: r.frekuensi_hujan, deskripsi: r.deskripsi
       }
     }));
 
@@ -74,20 +74,19 @@ router.get('/:id', async (req, res) => {
 // POST /api/rawan - Admin only
 router.post('/', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const { nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, deskripsi, geojson } = req.body;
+    const { nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi, geojson } = req.body;
     if (!nama_wilayah || !kecamatan || !jenis_bencana) {
       return res.status(400).json({ success: false, message: 'Nama wilayah, kecamatan, dan jenis bencana wajib diisi' });
     }
 
-    let geomQuery = geojson ? `ST_SetSRID(ST_GeomFromGeoJSON($7), 4326)` : 'NULL';
-    const params = [nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area || null, deskripsi];
+    let geomQuery = geojson ? `ST_SetSRID(ST_GeomFromGeoJSON($10), 4326)` : 'NULL';
+    const params = [nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area || null, elevasi || null, frekuensi_hujan || null, deskripsi];
     if (geojson) params.push(JSON.stringify(geojson));
 
     const result = await pool.query(
-      `INSERT INTO daerah_rawan (nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, deskripsi, geom)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, ${geomQuery}) RETURNING *`,
-      geojson ? [nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area || null, deskripsi, JSON.stringify(geojson)] :
-               [nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area || null, deskripsi]
+      `INSERT INTO daerah_rawan (nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi, geom)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, ${geomQuery}) RETURNING *`,
+      params
     );
 
     res.status(201).json({ success: true, message: 'Data berhasil ditambahkan', data: result.rows[0] });
@@ -100,15 +99,15 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
 // PUT /api/rawan/:id - Admin only
 router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
-    const { nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, deskripsi, geojson } = req.body;
+    const { nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi, geojson } = req.body;
 
-    const geomPart = geojson ? `, geom = ST_SetSRID(ST_GeomFromGeoJSON($8), 4326)` : '';
-    const params = [nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, deskripsi];
+    const geomPart = geojson ? `, geom = ST_SetSRID(ST_GeomFromGeoJSON($10), 4326)` : '';
+    const params = [nama_wilayah, kecamatan, kelurahan, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, deskripsi];
     if (geojson) params.push(JSON.stringify(geojson));
     params.push(req.params.id);
 
     const result = await pool.query(
-      `UPDATE daerah_rawan SET nama_wilayah=$1, kecamatan=$2, kelurahan=$3, jenis_bencana=$4, tingkat_risiko=$5, luas_area=$6, deskripsi=$7${geomPart}
+      `UPDATE daerah_rawan SET nama_wilayah=$1, kecamatan=$2, kelurahan=$3, jenis_bencana=$4, tingkat_risiko=$5, luas_area=$6, elevasi=$7, frekuensi_hujan=$8, deskripsi=$9${geomPart}
        WHERE id = $${params.length} RETURNING *`,
       params
     );

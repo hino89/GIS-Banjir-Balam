@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS daerah_rawan (
     jenis_bencana VARCHAR(100) NOT NULL,
     tingkat_risiko VARCHAR(50) CHECK (tingkat_risiko IN ('TINGGI', 'SEDANG', 'RENDAH')),
     luas_area DECIMAL(10,2),
+    elevasi DECIMAL(10,2),
+    frekuensi_hujan VARCHAR(100),
     deskripsi TEXT,
     geom GEOMETRY(POLYGON, 4326),
     created_at TIMESTAMP DEFAULT NOW(),

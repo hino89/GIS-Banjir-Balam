@@ -27,13 +27,14 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/stats', require('./routes/stats'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/route', require('./routes/routing'));
+app.use('/api/cuaca', require('./routes/cuaca'));
 
 // ==================== LAYER ALIASES (QGIS compat) ====================
 app.get('/api/layer/banjir', async (req, res) => {
   const pool = require('./db/pool');
   try {
     const result = await pool.query(
-      `SELECT id, nama_wilayah, kecamatan, kelurahan, deskripsi, jenis_bencana, tingkat_risiko, luas_area, created_at, ST_AsGeoJSON(geom) as geometry FROM daerah_rawan WHERE jenis_bencana ILIKE '%banjir%' AND geom IS NOT NULL`
+      `SELECT id, nama_wilayah, kecamatan, kelurahan, deskripsi, jenis_bencana, tingkat_risiko, luas_area, elevasi, frekuensi_hujan, created_at, ST_AsGeoJSON(geom) as geometry FROM daerah_rawan WHERE jenis_bencana ILIKE '%banjir%' AND geom IS NOT NULL`
     );
     const features = result.rows.map(r => ({ 
       type: 'Feature', 
@@ -47,31 +48,8 @@ app.get('/api/layer/banjir', async (req, res) => {
         jenis_bencana: r.jenis_bencana, 
         tingkat_risiko: r.tingkat_risiko,
         luas_area: r.luas_area,
-        tahun: new Date(r.created_at).getFullYear()
-      } 
-    }));
-    res.json({ type: 'FeatureCollection', features });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.get('/api/layer/longsor', async (req, res) => {
-  const pool = require('./db/pool');
-  try {
-    const result = await pool.query(
-      `SELECT id, nama_wilayah, kecamatan, kelurahan, deskripsi, jenis_bencana, tingkat_risiko, luas_area, created_at, ST_AsGeoJSON(geom) as geometry FROM daerah_rawan WHERE jenis_bencana ILIKE '%longsor%' AND geom IS NOT NULL`
-    );
-    const features = result.rows.map(r => ({ 
-      type: 'Feature', 
-      geometry: JSON.parse(r.geometry), 
-      properties: { 
-        id: r.id, 
-        nama_wilayah: r.nama_wilayah, 
-        kecamatan: r.kecamatan, 
-        kelurahan: r.kelurahan,
-        deskripsi: r.deskripsi,
-        jenis_bencana: r.jenis_bencana, 
-        tingkat_risiko: r.tingkat_risiko,
-        luas_area: r.luas_area,
+        elevasi: r.elevasi,
+        frekuensi_hujan: r.frekuensi_hujan,
         tahun: new Date(r.created_at).getFullYear()
       } 
     }));

@@ -126,7 +126,7 @@ export default function PetaInteraktif() {
         const kelName = f.properties.desa?.trim().toUpperCase();
         const cuacaData = cuacaMap[kelName] || {};
         
-        let elevasi = cuacaData.elevasi !== undefined ? cuacaData.elevasi : 50;
+        let elevasi = f.properties.elevasi ? Number(f.properties.elevasi) : 50;
         let presipitasi = cuacaData.presipitasi || 0;
         
         // Kalkulasi Risiko Real-Time

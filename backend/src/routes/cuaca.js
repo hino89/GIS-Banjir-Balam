@@ -16,45 +16,44 @@ router.get('/all-kelurahan', async (req, res) => {
       return res.json({ success: true, cached: true, data: weatherCache.data });
     }
 
-    // Ambil koordinat semua kelurahan dari database
-    const dbResult = await pool.query(`SELECT nama, ST_Y(ST_Centroid(geom)) as lat, ST_X(ST_Centroid(geom)) as lon FROM wilayah_desa WHERE geom IS NOT NULL`);
+    // Ambil koordinat semua kelurahan dari database (gunakan kolom yang sudah ada)
+    const dbResult = await pool.query(`SELECT nama, latitude as lat, longitude as lon FROM wilayah_desa WHERE latitude IS NOT NULL`);
     const kelurahanList = dbResult.rows;
 
     if (kelurahanList.length === 0) {
       return res.json({ success: true, data: {} });
     }
 
-    // Format array lat dan lon (maksimal 126, url length sekitar 3-4kb, aman untuk open-meteo)
-    const lats = kelurahanList.map(k => k.lat.toFixed(5)).join(',');
-    const lons = kelurahanList.map(k => k.lon.toFixed(5)).join(',');
-
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation,rain&timezone=Asia%2FJakarta`;
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch Open-Meteo API');
-    
-    const data = await response.json();
-    
-    // Map hasil ke nama kelurahan
     const resultMap = {};
-    if (Array.isArray(data)) {
-      // Jika data berupa array (multiple locations)
-      data.forEach((d, idx) => {
-        const kel = kelurahanList[idx].nama.toUpperCase();
+    const batchSize = 100;
+    
+    for (let i = 0; i < kelurahanList.length; i += batchSize) {
+      const batch = kelurahanList.slice(i, i + batchSize);
+      const lats = batch.map(k => k.lat).join(',');
+      const lons = batch.map(k => k.lon).join(',');
+
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation,rain&timezone=Asia%2FJakarta`;
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch Open-Meteo API batch ${i}`);
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        data.forEach((d, idx) => {
+          const kel = batch[idx].nama.toUpperCase();
+          resultMap[kel] = {
+            presipitasi: d.current.precipitation,
+            hujan: d.current.rain
+          };
+        });
+      } else {
+        const kel = batch[0].nama.toUpperCase();
         resultMap[kel] = {
-          elevasi: d.elevation,
-          presipitasi: d.current.precipitation,
-          hujan: d.current.rain
+          presipitasi: data.current.precipitation,
+          hujan: data.current.rain
         };
-      });
-    } else {
-      // Jika hanya 1 data (fallback)
-      const kel = kelurahanList[0].nama.toUpperCase();
-      resultMap[kel] = {
-        elevasi: data.elevation,
-        presipitasi: data.current.precipitation,
-        hujan: data.current.rain
-      };
+      }
     }
 
     // Save to cache

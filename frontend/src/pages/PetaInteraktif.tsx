@@ -115,11 +115,43 @@ export default function PetaInteraktif() {
     };
   }, [filterWilayah]);
 
+  // Combine Daerah Rawan Banjir data into Desa boundaries
+  const enrichedDesa = useMemo(() => {
+    if (!layers.desa) return null;
+    const banjirMap = new Map();
+    if (layers.banjir?.features) {
+      layers.banjir.features.forEach(f => {
+        const kelName = f.properties.kelurahan?.trim().toUpperCase();
+        if (kelName) banjirMap.set(kelName, f.properties);
+      });
+    }
+
+    return {
+      ...layers.desa,
+      features: layers.desa.features.map((f: any) => {
+        const riskData = banjirMap.get(f.properties.desa?.trim().toUpperCase());
+        return {
+          ...f,
+          properties: {
+            ...f.properties,
+            tingkat_risiko: riskData?.tingkat_risiko || null,
+            elevasi: riskData?.elevasi || null,
+            frekuensi_hujan: riskData?.frekuensi_hujan || null,
+            deskripsi: riskData?.deskripsi || null
+          }
+        };
+      })
+    };
+  }, [layers.desa, layers.banjir]);
+
   // Ranking Calculation
   const ranking = useMemo(() => {
     let all: any[] = [];
     if (filterBencana === 'Semua Bencana' || filterBencana === 'Banjir') {
-      if (layers.banjir?.features) all = [...all, ...layers.banjir.features];
+      if (enrichedDesa?.features) {
+        // Only include those that have actual flood risk
+        all = [...all, ...enrichedDesa.features.filter((f:any) => f.properties.tingkat_risiko)];
+      }
     }
     if (filterBencana === 'Semua Bencana' || filterBencana === 'Longsor') {
       if (layers.longsor?.features) all = [...all, ...layers.longsor.features];
@@ -373,9 +405,9 @@ export default function PetaInteraktif() {
             <Overlay checked name="🗺️ Batas Wilayah Kecamatan">
               <GeoJSON 
                 data={layers.wilayah} 
-                style={{ color: '#64748b', weight: 2, opacity: 0.8, fillOpacity: 0.05, dashArray: '5, 5' }}
+                style={{ color: '#1e293b', weight: 3, opacity: 1, fillOpacity: 0.05, dashArray: '5, 5' }}
                 onEachFeature={(feature, layer) => {
-                  layer.bindTooltip(`<b>${feature.properties.kecamatan}</b>`, { sticky: true, className: 'bg-white/90 text-slate-700 font-bold border-0 shadow-sm px-2 py-1' });
+                  layer.bindTooltip(`<b>${feature.properties.kecamatan}</b>`, { sticky: true, className: 'bg-white/95 text-slate-800 font-extrabold border-0 shadow-md px-2 py-1 text-sm' });
                   layer.on('click', (e) => {
                     fetchCuaca(e.latlng.lat, e.latlng.lng, `Kec. ${feature.properties.kecamatan}`);
                   });
@@ -388,12 +420,23 @@ export default function PetaInteraktif() {
             <Overlay checked name="📍 Batas Desa/Kelurahan">
               <GeoJSON 
                 key={`desa-${filterWilayah}`}
-                data={filterFeatures(layers.desa)} 
-                style={{ color: '#10b981', weight: 1.5, opacity: 0.6, fillOpacity: 0.0, dashArray: '3, 4' }}
+                data={filterFeatures(enrichedDesa)} 
+                style={(f: any) => {
+                  const baseStyle = { color: '#047857', weight: 2.5, opacity: 0.9, fillOpacity: 0.1, dashArray: '3, 4' };
+                  if (f.properties?.tingkat_risiko) {
+                    const riskColor = getRisikoFillColor(f.properties.tingkat_risiko);
+                    return { ...baseStyle, fillColor: riskColor, fillOpacity: 0.45, color: riskColor, opacity: 1, dashArray: '' };
+                  }
+                  return baseStyle;
+                }}
                 onEachFeature={(feature, layer) => {
-                  layer.bindTooltip(`<span class="text-xs text-emerald-700 font-semibold">${feature.properties.desa}</span>`, { sticky: true, className: 'bg-white/70 border-0 shadow-none px-1 py-0.5' });
+                  const p = feature.properties;
+                  const riskHtml = p.tingkat_risiko 
+                    ? `<br/><span class="px-1.5 py-0.5 rounded text-[10px] text-white font-bold mt-1 inline-block shadow-sm" style="background:${getRisikoFillColor(p.tingkat_risiko)}">Risiko: ${p.tingkat_risiko}</span>` 
+                    : '';
+                  layer.bindTooltip(`<div class="text-center"><span class="text-sm text-emerald-900 font-extrabold drop-shadow-sm">${p.desa}</span>${riskHtml}</div>`, { sticky: true, className: 'bg-white/90 border-0 shadow-md px-2 py-1' });
                   layer.on('click', (e) => {
-                    fetchCuaca(e.latlng.lat, e.latlng.lng, `Kel. ${feature.properties.desa}`);
+                    fetchCuaca(e.latlng.lat, e.latlng.lng, `Kel. ${p.desa}`);
                   });
                 }}
               />
@@ -423,38 +466,9 @@ export default function PetaInteraktif() {
             </Overlay>
           )}
 
-          {/* OVERLAYS */}
-          {layers.banjir && (
-            <Overlay checked={filterBencana === 'Semua Bencana' || filterBencana === 'Banjir'} name="🌊 Daerah Rawan Banjir">
-              <GeoJSON 
-                key={`banjir-${filterWilayah}`}
-                data={filterFeatures(layers.banjir)} 
-                style={(f: any) => risikoStyle(f.properties?.tingkat_risiko)}
-                onEachFeature={(feature, layer) => {
-                  const p = feature.properties;
-                  layer.bindPopup(`
-                    <div class="map-popup p-3 min-w-[200px]">
-                      <div class="font-bold text-slate-800 text-[15px] mb-2 border-b pb-2 border-slate-200 flex items-center gap-2">
-                        🌊 ${p.nama_wilayah}
-                      </div>
-                      <table class="w-full text-xs text-slate-600">
-                        <tr><td class="py-1 w-20 text-slate-400">Kecamatan</td><td class="py-1 font-medium">${p.kecamatan || '-'}</td></tr>
-                        <tr><td class="py-1 text-slate-400">Kelurahan</td><td class="py-1 font-medium">${p.kelurahan || '-'}</td></tr>
-                        <tr><td class="py-1 text-slate-400">Risiko</td><td class="py-1"><span class="px-1.5 py-0.5 rounded text-white font-bold" style="background:${getRisikoFillColor(p.tingkat_risiko)}">${p.tingkat_risiko || 'SEDANG'}</span></td></tr>
-                        ${p.luas_area ? `<tr><td class="py-1 text-slate-400">Luas Area</td><td class="py-1 font-medium">${p.luas_area} Ha</td></tr>` : ''}
-                        ${p.elevasi ? `<tr><td class="py-1 text-slate-400">Elevasi</td><td class="py-1 font-medium">${p.elevasi} mdpl</td></tr>` : ''}
-                        ${p.frekuensi_hujan ? `<tr><td class="py-1 text-slate-400">Frek. Hujan</td><td class="py-1 font-medium text-[10px] leading-tight">${p.frekuensi_hujan}</td></tr>` : ''}
-                        ${p.deskripsi ? `<tr><td colspan="2" class="pt-2"><div class="bg-slate-50 p-2 rounded text-slate-500 italic border border-slate-100">"${p.deskripsi}"</div></td></tr>` : ''}
-                      </table>
-                    </div>
-                  `);
-                  layer.on('click', (e) => {
-                    fetchCuaca(e.latlng.lat, e.latlng.lng, p.nama_wilayah);
-                  });
-                }}
-              />
-            </Overlay>
-          )}
+          {/* DAERAH RAWAN BANJIR (MOCK) - HIDDEN TO PREVENT CLUTTER 
+              Since we now map risk to enrichedDesa, we don't need the boxy shapes!
+          */}
           
           {layers.evakuasi && (
             <Overlay name="🚗 Jalur Evakuasi">

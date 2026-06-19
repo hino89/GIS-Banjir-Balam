@@ -51,9 +51,6 @@ export default function PetaInteraktif() {
   // Floating Filters
   const [filterWilayah, setFilterWilayah] = useState('Semua Wilayah');
   const [filterBencana, setFilterBencana] = useState('Semua Bencana');
-  const [filterTahun, setFilterTahun] = useState('2025');
-
-  const TAHUN_OPTIONS = ['2025', '2024', '2023', '2022', '2021'];
 
   // Routing State
   const [routingMode, setRoutingMode] = useState(false);
@@ -113,13 +110,10 @@ export default function PetaInteraktif() {
       ...geojson,
       features: geojson.features?.filter((f: any) => {
         if (filterWilayah !== 'Semua Wilayah' && f.properties?.kecamatan !== filterWilayah) return false;
-        if (filterTahun && f.properties?.tahun) {
-          if (f.properties.tahun.toString() !== filterTahun) return false;
-        }
         return true;
       }) || []
     };
-  }, [filterWilayah, filterTahun]);
+  }, [filterWilayah]);
 
   // Ranking Calculation
   const ranking = useMemo(() => {
@@ -202,17 +196,6 @@ export default function PetaInteraktif() {
           >
             <option value="Semua Bencana">Semua Bencana</option>
             <option value="Banjir">Banjir</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-
-        <div className="relative bg-white rounded shadow-md border border-slate-200 w-36 shrink-0">
-          <select 
-            value={filterTahun} 
-            onChange={e => setFilterTahun(e.target.value)}
-            className="w-full appearance-none px-4 py-2.5 text-sm font-medium text-slate-700 bg-transparent outline-none cursor-pointer"
-          >
-            {TAHUN_OPTIONS.map(t => <option key={t} value={t}>Tahun {t}</option>)}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
@@ -306,7 +289,7 @@ export default function PetaInteraktif() {
       )}
 
       {/* FLOATING RANKING PANEL (RIGHT) */}
-      <div className="absolute top-44 right-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col max-h-[calc(100vh-210px)] animate-slide-up hidden md:flex">
+      <div className="absolute top-44 right-4 bottom-4 z-[400] w-96 bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-lg overflow-hidden flex flex-col animate-slide-up hidden md:flex">
         <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <span className="text-sm font-bold text-slate-700 tracking-wider">
             RANKING {filterBencana !== 'Semua Bencana' ? filterBencana.toUpperCase() : 'BENCANA'}
@@ -319,7 +302,7 @@ export default function PetaInteraktif() {
               <tr>
                 <th className="px-3 py-2 text-slate-500 font-semibold w-8">NO</th>
                 <th className="px-3 py-2 text-slate-500 font-semibold">WILAYAH</th>
-                <th className="px-3 py-2 text-slate-500 font-semibold text-center">{filterTahun}</th>
+                <th className="px-3 py-2 text-slate-500 font-semibold text-center">RISIKO</th>
               </tr>
             </thead>
             <tbody>
@@ -368,7 +351,7 @@ export default function PetaInteraktif() {
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="&copy; OpenStreetMap &copy; CARTO" />
           </BaseLayer>
           <BaseLayer name="Peta Topografi (Kontur Elevasi)">
-            <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" attribution="&copy; OpenTopoMap" maxZoom={17} />
+            <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}" attribution="&copy; Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors, and the GIS User Community" />
           </BaseLayer>
           <BaseLayer name="OpenStreetMap">
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
